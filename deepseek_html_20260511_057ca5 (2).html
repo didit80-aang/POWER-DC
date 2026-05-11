@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no">
+    <title>⚡ Sistem Monitoring Daya DC - PZEM-017 + RPM</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PowerMon DC">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="PowerMon DC">
+    <meta name="description" content="Monitoring Daya DC Real-time - PZEM-017 dengan RPM Motor">
+    <meta name="screen-orientation" content="portrait">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-primary: #f0f2f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f8f9fa;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --bg-hover: #f3f4f6;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --text-inverse: #ffffff;
+            --border-color: #e5e7eb;
+            --border-hover: #d1d5db;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 8px 25px rgba(0,0,0,0.1);
+            --shadow-lg: 0 12px 35px rgba(0,0,0,0.15);
+            --shadow-xl: 0 20px 50px rgba(0,0,0,0.2);
+            --brand-primary: #6366f1;
+            --brand-primary-dark: #4f46e5;
+            --brand-secondary: #8b5cf6;
+            --brand-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --color-success: #10b981;
+            --color-success-dark: #059669;
+            --color-warning: #f59e0b;
+            --color-warning-dark: #d97706;
+            --color-danger: #ef4444;
+            --color-danger-dark: #dc2626;
+            --color-info: #3b82f6;
+            --color-info-dark: #2563eb;
+            --gauge-normal: #6366f1;
+            --gauge-warning: #f59e0b;
+            --gauge-danger: #ef4444;
+            --gauge-bg: #e5e7eb;
+            --gauge-bg-dark: #374151;
+            --card-radius: 16px;
+            --btn-radius: 10px;
+            --badge-radius: 20px;
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s ease;
+            --transition-slow: 0.5s ease;
+            --body-gradient: linear-gradient(160deg, #667eea 0%, #6b47b5 30%, #764ba2 60%, #7c4f9e 100%);
+            --header-text-color: #ffffff;
+            --container-max-width: 600px;
+            --container-min-width: 320px;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #1a2235;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --bg-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #334155;
+            --border-hover: #475569;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 8px 25px rgba(0,0,0,0.4);
+            --shadow-lg: 0 12px 35px rgba(0,0,0,0.5);
+            --shadow-xl: 0 20px 50px rgba(0,0,0,0.6);
+            --body-gradient: linear-gradient(160deg, #0f172a 0%, #12182d 30%, #1a1630 60%, #1e1b4b 100%);
+            --header-text-color: #e2e8f0;
+            --gauge-bg: #334155;
+            --gauge-bg-dark: #1e293b;
+            --fault-row-bg: rgba(239, 68, 68, 0.15);
+            --fault-row-hover: rgba(239, 68, 68, 0.25);
+            --fault-cleared-row-bg: rgba(16, 185, 129, 0.15);
+            --fault-cleared-row-hover: rgba(16, 185, 129, 0.25);
+        }
+
+        [data-theme="light"] {
+            --fault-row-bg: #fee2e2;
+            --fault-row-hover: #fecaca;
+            --fault-cleared-row-bg: #d1fae5;
+            --fault-cleared-row-hover: #a7f3d0;
+        }
+
+        [data-palette="ocean"] { --brand-primary: #0ea5e9; --brand-primary-dark: #0284c7; --brand-secondary: #06b6d4; --brand-gradient: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); --gauge-normal: #0ea5e9; }
+        [data-palette="forest"] { --brand-primary: #22c55e; --brand-primary-dark: #16a34a; --brand-secondary: #10b981; --brand-gradient: linear-gradient(135deg, #22c55e 0%, #059669 100%); --gauge-normal: #22c55e; }
+        [data-palette="sunset"] { --brand-primary: #f97316; --brand-primary-dark: #ea580c; --brand-secondary: #ef4444; --brand-gradient: linear-gradient(135deg, #f97316 0%, #ef4444 100%); --gauge-normal: #f97316; }
+        [data-palette="purple"] { --brand-primary: #a855f7; --brand-primary-dark: #9333ea; --brand-secondary: #7c3aed; --brand-gradient: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); --gauge-normal: #a855f7; }
+        [data-palette="rose"] { --brand-primary: #f43f5e; --brand-primary-dark: #e11d48; --brand-secondary: #fb7185; --brand-gradient: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); --gauge-normal: #f43f5e; }
+        [data-palette="amber"] { --brand-primary: #f59e0b; --brand-primary-dark: #d97706; --brand-secondary: #fbbf24; --brand-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); --gauge-normal: #f59e0b; }
+
+        [data-bg-palette="bg-ocean"] { --body-gradient: linear-gradient(160deg, #0c4a6e 0%, #0d5c82 35%, #0e7490 65%, #0f8aa3 100%); }
+        [data-bg-palette="bg-forest"] { --body-gradient: linear-gradient(160deg, #14532d 0%, #155e35 35%, #064e3b 65%, #075e48 100%); }
+        [data-bg-palette="bg-sunset"] { --body-gradient: linear-gradient(160deg, #7c2d12 0%, #8b3a1a 35%, #991b1b 65%, #a52121 100%); }
+        [data-bg-palette="bg-purple"] { --body-gradient: linear-gradient(160deg, #4c1d95 0%, #5320a3 35%, #5b21b6 65%, #6428c4 100%); }
+        [data-bg-palette="bg-rose"] { --body-gradient: linear-gradient(160deg, #881337 0%, #931641 35%, #9b1d45 60%, #4c0519 100%); }
+        [data-bg-palette="bg-amber"] { --body-gradient: linear-gradient(160deg, #78350f 0%, #854015 35%, #964a18 60%, #451a03 100%); }
+        [data-bg-palette="bg-default"] { --body-gradient: linear-gradient(160deg, #667eea 0%, #6b47b5 30%, #764ba2 60%, #7c4f9e 100%); }
+        [data-theme="dark"][data-bg-palette="bg-default"] { --body-gradient: linear-gradient(160deg, #0f172a 0%, #12182d 30%, #1a1630 60%, #1e1b4b 100%); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { width: 100%; height: 100%; -webkit-text-size-adjust: 100%; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--body-gradient);
+            background-attachment: fixed;
+            position: relative;
+            min-height: 100vh;
+            padding: 10px;
+            padding-bottom: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            transition: background var(--transition-slow);
+            overflow-x: hidden;
+            width: 100%;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: inherit;
+            filter: blur(60px) saturate(1.2);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 256px 256px;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .container { 
+            max-width: var(--container-max-width);
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* HAPTIC TOGGLE */
+        .haptic-toggle-inline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            font-size: 1em;
+            transition: all var(--transition-fast);
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .haptic-toggle-inline:hover { background: var(--bg-hover); border-color: var(--border-hover); transform: scale(1.1); }
+        .haptic-toggle-inline.active { background: var(--brand-primary); color: white; border-color: var(--brand-primary); box-shadow: 0 0 10px rgba(99, 102, 241, 0.3); }
+        .haptic-toggle-inline.active.fault-active-haptic { animation: hapticGlowPulse 0.8s infinite; background: var(--color-danger); border-color: var(--color-danger); box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+        @keyframes hapticGlowPulse { 0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); } 50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.7); } }
+
+        @media screen and (max-width: 480px) {
+            :root { --container-max-width: 100%; }
+            body { padding: 8px; padding-bottom: 70px; }
+            .parameter-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .gauge-container { max-width: 130px; height: 110px; }
+            .action-btn-circle { width: 48px; height: 48px; font-size: 0.65em; }
+            .card { padding: 12px 10px; }
+            .card-header h2 { font-size: 1em; }
+            .tabs { padding: 6px; gap: 3px; }
+            .tab-btn { padding: 8px 12px; font-size: 0.75em; min-width: 60px; }
+            .chart-wrapper { height: 200px; }
+            .header h1 { font-size: 1.2em; }
+        }
+        @media screen and (min-width: 481px) and (max-width: 768px) {
+            :root { --container-max-width: 540px; }
+            body { padding: 12px; padding-bottom: 80px; }
+            .gauge-container { max-width: 150px; height: 125px; }
+            .chart-wrapper { height: 250px; }
+        }
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            :root { --container-max-width: 720px; }
+            body { padding: 16px; padding-bottom: 40px; }
+            .parameter-grid { grid-template-columns: repeat(3, 1fr); gap: 15px; }
+            .gauge-container { max-width: 160px; height: 130px; }
+            .chart-wrapper { height: 280px; }
+        }
+        @media screen and (min-width: 1025px) {
+            :root { --container-max-width: 1100px; }
+            body { padding: 20px; padding-bottom: 30px; }
+            .parameter-grid { grid-template-columns: 1fr 1fr; gap: 18px; }
+            .param-item.voltage-primary { grid-column: 1 / -1; display: flex !important; align-items: center; gap: 30px; padding: 25px 30px; }
+            .gauge-container { max-width: 180px; height: 140px; }
+            .chart-wrapper { height: 350px; }
+            .card { padding: 20px 25px; }
+        }
+        @media screen and (min-width: 1400px) {
+            :root { --container-max-width: 1300px; }
+            .parameter-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+            .gauge-container { max-width: 190px; height: 150px; }
+            .chart-wrapper { height: 400px; }
+        }
+        @media screen and (min-width: 1800px) {
+            :root { --container-max-width: 1600px; }
+            .parameter-grid { grid-template-columns: repeat(4, 1fr); gap: 22px; }
+            .gauge-container { max-width: 210px; height: 160px; }
+            .chart-wrapper { height: 450px; }
+        }
+        @media screen and (max-height: 500px) and (orientation: landscape) {
+            body { padding: 6px; padding-bottom: 20px; }
+            .gauge-container { height: 85px; max-width: 110px; }
+        }
+
+        .header {
+            text-align: center;
+            color: var(--header-text-color);
+            margin-bottom: 15px;
+            padding: 10px 0;
+            position: relative;
+            z-index: 1;
+        }
+        .header h1 { font-size: clamp(1.3em, 4vw, 2em); margin-bottom: 3px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header p { font-size: clamp(0.8em, 2vw, 0.95em); margin-bottom: 5px; }
+
+        .status-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: var(--badge-radius);
+            font-size: 0.8em;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: all var(--transition-normal);
+        }
+        .connected { background: var(--color-success); color: white; }
+        .disconnected { background: var(--color-danger); color: white; animation: pulse 2s infinite; }
+        .connecting { background: var(--color-warning); color: white; animation: pulse 1s infinite; }
+        .device-online { background: var(--color-success); color: white; }
+        .device-offline { background: var(--color-danger); color: white; animation: pulse 1.5s infinite; }
+        .rssi-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 10px;
+            border-radius: var(--badge-radius);
+            font-size: 0.8em;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .rssi-excellent { background: var(--color-success); color: white; }
+        .rssi-good { background: var(--color-info); color: white; }
+        .rssi-fair { background: var(--color-warning); color: white; }
+        .rssi-poor { background: var(--color-danger); color: white; }
+        .rssi-offline { background: var(--text-muted); color: white; }
+        .memory-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 10px;
+            border-radius: var(--badge-radius);
+            font-size: 0.8em;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .memory-good { background: var(--color-success); color: white; }
+        .memory-moderate { background: var(--color-warning); color: white; }
+        .memory-low { background: var(--color-danger); color: white; }
+        .memory-offline { background: var(--text-muted); color: white; }
+        .priority-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            background: var(--color-warning);
+            color: white;
+            animation: autoGlow 2s infinite;
+        }
+        .simulation-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+            background: var(--color-warning);
+            color: #000;
+            animation: pulse 1s infinite;
+        }
+        [data-theme="dark"] .simulation-badge {
+            background: #f59e0b;
+            color: #000;
+        }
+
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 15px;
+            background: var(--bg-card);
+            border-radius: var(--card-radius);
+            padding: 8px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            z-index: 1;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: var(--btn-radius);
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all var(--transition-normal);
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
+        }
+        .tab-btn.active { background: var(--brand-primary); color: white; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+        .tab-btn:hover:not(.active) { background: var(--bg-hover); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; position: relative; z-index: 1; }
+        .tab-content.active { display: block; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 15px; }
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--card-radius);
+            padding: clamp(12px, 2.5vw, 20px);
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-normal);
+            animation: slideIn 0.5s ease;
+            border: 1px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+        .card.fault-shake { animation: faultShake 0.6s ease, slideIn 0.5s ease; }
+        @keyframes faultShake {
+            0%, 100% { transform: translateX(0); }
+            10% { transform: translateX(-8px); }
+            20% { transform: translateX(8px); }
+            30% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            50% { transform: translateX(-4px); }
+            60% { transform: translateX(4px); }
+            70% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
+        }
+        .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .card-header h2 { font-size: clamp(1em, 3vw, 1.3em); color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .card-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .relay-control { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .action-btn-circle {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            font-size: 0.7em;
+            font-weight: bold;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            position: relative;
+            overflow: hidden;
+            outline: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            white-space: nowrap;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .action-btn-circle::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        .action-btn-circle:active::before { width: 200px; height: 200px; }
+        .action-btn-circle:active { transform: scale(0.9); }
+        .action-btn-circle .btn-icon { font-size: 1.4em; line-height: 1; }
+        .action-btn-circle .btn-label { font-size: 0.65em; line-height: 1; letter-spacing: 0.3px; }
+        .action-btn-circle.manual-btn { background: linear-gradient(135deg, var(--color-success), var(--color-success-dark)); color: white; border-color: var(--color-success-dark); }
+        .action-btn-circle.manual-btn:hover:not(:disabled) { background: linear-gradient(135deg, var(--color-success-dark), #047857); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); transform: translateY(-2px); }
+        .action-btn-circle.manual-btn.manual-off-state { background: linear-gradient(135deg, var(--color-danger), var(--color-danger-dark)); border-color: var(--color-danger-dark); }
+        .action-btn-circle.manual-btn.manual-off-state:hover:not(:disabled) { background: linear-gradient(135deg, var(--color-danger-dark), #b91c1c); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4); }
+        .action-btn-circle.manual-btn.manual-fault-state { background: linear-gradient(135deg, #6b7280, #4b5563); border-color: #4b5563; cursor: not-allowed; }
+        .action-btn-circle.reset-btn { background: linear-gradient(135deg, var(--color-info), var(--color-info-dark)); color: white; border-color: var(--color-info-dark); }
+        .action-btn-circle.reset-btn:hover:not(:disabled) { background: linear-gradient(135deg, var(--color-info-dark), #1d4ed8); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); transform: translateY(-2px); }
+        .action-btn-circle:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(30%); transform: none !important; }
+
+        .relay-status-pill {
+            padding: 8px 16px;
+            border-radius: var(--badge-radius);
+            font-size: 0.8em;
+            font-weight: bold;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all var(--transition-normal);
+            border: 2px solid transparent;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+        .relay-status-pill.on { background: #d1fae5; color: #065f46; border-color: var(--color-success); }
+        .relay-status-pill.off { background: #fee2e2; color: #991b1b; border-color: var(--color-danger); }
+        .relay-status-pill.auto-on { background: #d1fae5; color: #065f46; border-color: var(--color-success); box-shadow: 0 0 12px rgba(16, 185, 129, 0.2); }
+        .relay-status-pill.auto-off { background: #fee2e2; color: #991b1b; border-color: var(--color-danger); }
+        .relay-status-pill.tripped { background: #fef3c7; color: #92400e; border-color: var(--color-warning); animation: faultBlinkPill 0.8s infinite; }
+        .relay-status-pill.waiting { background: var(--bg-tertiary); color: var(--text-muted); border-color: var(--text-muted); animation: pulse 2s infinite; }
+        .relay-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .relay-status-dot.on-dot { background: var(--color-success); }
+        .relay-status-dot.off-dot { background: var(--color-danger); }
+        .relay-status-dot.tripped-dot { background: var(--color-warning); animation: faultBlink 0.8s infinite; }
+        .relay-status-dot.waiting-dot { background: var(--text-muted); animation: pulse 2s infinite; }
+
+        .protection-badge {
+            padding: 5px 12px;
+            border-radius: var(--badge-radius);
+            font-size: 0.7em;
+            font-weight: bold;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all var(--transition-normal);
+        }
+        .protection-badge.overvoltage { background: #fee2e2; color: #991b1b; border: 1px solid var(--color-danger); animation: faultBlink 0.8s infinite; }
+        .protection-badge.overcurrent { background: #fef3c7; color: #92400e; border: 1px solid var(--color-warning); animation: faultBlink 0.8s infinite; }
+        .protection-badge.normal { background: #d1fae5; color: #065f46; border: 1px solid var(--color-success); }
+        .protection-badge.fault { background: #fee2e2; color: #991b1b; border: 1px solid var(--color-danger); animation: faultBlink 0.5s infinite; }
+        .protection-badge.waiting { background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--text-muted); }
+        .protection-badge.alarm { background: #fef2f2; color: #991b1b; border: 1px solid var(--color-danger); animation: faultBlink 0.8s infinite; }
+
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .param-item {
+            text-align: center;
+            padding: 15px 10px;
+            background: var(--bg-tertiary);
+            border-radius: var(--card-radius);
+            transition: all var(--transition-normal);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        .param-item:hover { background: var(--bg-hover); border-color: var(--border-hover); transform: translateY(-2px); }
+        .param-item.protection-warning { background: #fee2e2; border: 2px solid var(--color-danger); animation: warningPulse 1.5s infinite; }
+        .param-item.waiting-state { background: var(--bg-tertiary); border: 1px dashed var(--text-muted); }
+        .param-label {
+            font-size: clamp(0.7em, 2vw, 0.8em);
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            max-width: 190px;
+            height: 135px;
+            margin: 8px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gauge-canvas { max-width: 100%; max-height: 100%; }
+        .gauge-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%; height: 100%;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+        .param-value {
+            font-size: clamp(1.1em, 3vw, 1.4em);
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .param-unit { font-size: 0.6em; color: var(--text-muted); margin-left: 2px; font-weight: 500; }
+        .warning-text { 
+            font-size: 0.7em;
+            color: var(--color-danger);
+            margin-top: 6px;
+            font-weight: bold;
+            animation: textPulse 1s infinite;
+            min-height: 20px;
+        }
+        .badge-container {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: var(--card-radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+        .chart-wrapper { position: relative; height: clamp(200px, 35vh, 300px); min-height: 200px; width: 100%; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .chart-header h3 { font-size: clamp(0.9em, 2.5vw, 1.1em); color: var(--text-primary); margin: 0; }
+        .chart-controls { display: flex; gap: 4px; flex-wrap: wrap; }
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: var(--btn-radius);
+            background: var(--brand-primary);
+            color: white;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            font-weight: bold;
+            font-size: 0.75em;
+            white-space: nowrap;
+        }
+        .btn:hover { background: var(--brand-primary-dark); transform: translateY(-1px); }
+        .btn.active { background: var(--brand-secondary); }
+
+        .sim-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--btn-radius);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9em;
+            transition: all var(--transition-normal);
+            width: 100%;
+            margin-top: 8px;
+            color: white;
+        }
+        .sim-btn.overvoltage-btn { background: var(--color-danger); }
+        .sim-btn.overvoltage-btn:hover { background: var(--color-danger-dark); transform: translateY(-2px); }
+        .sim-btn.overcurrent-btn { background: var(--color-warning); }
+        .sim-btn.overcurrent-btn:hover { background: var(--color-warning-dark); transform: translateY(-2px); }
+        .sim-btn.both-btn { background: var(--color-danger-dark); }
+        .sim-btn.both-btn:hover { background: #b91c1c; transform: translateY(-2px); }
+        .sim-btn.stop-btn { background: var(--color-success); }
+        .sim-btn.stop-btn:hover { background: var(--color-success-dark); transform: translateY(-2px); }
+
+        .settings-panel {
+            background: var(--bg-card);
+            border-radius: var(--card-radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+        .settings-panel h3 { font-size: clamp(1em, 2.5vw, 1.2em); margin-bottom: 15px; color: var(--text-primary); }
+        .settings-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 769px) { .settings-grid { grid-template-columns: repeat(2, 1fr); } }
+        .setting-item {
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: var(--btn-radius);
+            border: 1px solid var(--border-color);
+            transition: all var(--transition-normal);
+        }
+        .setting-item:hover { border-color: var(--border-hover); }
+        .setting-item label { display: block; font-weight: bold; color: var(--text-primary); margin-bottom: 6px; font-size: 0.85em; }
+        .setting-item .input-group { display: flex; gap: 6px; align-items: center; }
+        .setting-item input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9em;
+            min-width: 0;
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+        .setting-item input:focus { outline: none; border-color: var(--brand-primary); }
+        .setting-item .input-unit { font-size: 0.85em; color: var(--text-secondary); font-weight: bold; white-space: nowrap; }
+        .setting-item button {
+            width: 100%;
+            padding: 8px;
+            background: var(--brand-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-top: 6px;
+        }
+        .setting-item button:hover { background: var(--brand-primary-dark); }
+        .limit-value { margin-top: 6px; font-size: 0.8em; color: var(--text-secondary); }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 0.85em; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: var(--text-secondary); font-weight: 500; }
+        .info-value { color: var(--text-primary); font-weight: bold; }
+
+        .memory-info-container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .memory-card {
+            padding: 15px;
+            background: var(--bg-tertiary);
+            border-radius: var(--btn-radius);
+            border: 1px solid var(--border-color);
+        }
+        .memory-card-title { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; }
+        .memory-bar-container { background: var(--border-color); border-radius: 8px; height: 24px; overflow: hidden; position: relative; margin-bottom: 8px; }
+        .memory-bar { height: 100%; border-radius: 8px; transition: all var(--transition-slow); }
+        .memory-bar-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75em; font-weight: bold; color: var(--text-primary); }
+        .memory-detail { display: flex; justify-content: space-between; font-size: 0.8em; color: var(--text-secondary); }
+        .memory-detail-value { font-weight: bold; color: var(--text-primary); }
+
+        .data-logger-container {
+            background: var(--bg-card);
+            border-radius: var(--card-radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+        .logger-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .logger-header h3 { font-size: clamp(0.9em, 2.5vw, 1.1em); color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px; }
+        .logger-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+        .logger-stats { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; }
+        .logger-stat-item { display: flex; align-items: center; gap: 5px; font-size: 0.8em; color: var(--text-secondary); }
+        .logger-stat-value { font-weight: bold; color: var(--text-primary); }
+        .table-wrapper { overflow-x: auto; max-height: 400px; overflow-y: auto; border-radius: var(--btn-radius); border: 1px solid var(--border-color); }
+        .logger-table { width: 100%; border-collapse: collapse; font-size: 0.7em; min-width: 650px; }
+        .logger-table thead { position: sticky; top: 0; z-index: 10; }
+        .logger-table th { background: var(--brand-primary); color: white; padding: 8px 6px; text-align: center; font-weight: bold; font-size: 0.8em; white-space: nowrap; }
+        .logger-table td { padding: 6px; text-align: center; border-bottom: 1px solid var(--border-color); white-space: nowrap; color: var(--text-primary); }
+        .logger-table tbody tr { transition: all var(--transition-normal); }
+        .logger-table tbody tr:hover { background: var(--bg-hover); }
+        .logger-table tbody tr.fault-row { background: var(--fault-row-bg); }
+        .logger-table tbody tr.fault-cleared-row { background: var(--fault-cleared-row-bg); }
+        .fault-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: bold; }
+        .fault-tag.overvoltage { background: var(--color-danger); color: white; animation: faultBlink 0.8s infinite; }
+        .fault-tag.overcurrent { background: var(--color-warning); color: white; animation: faultBlink 0.8s infinite; }
+        .fault-tag.multiple { background: var(--color-danger-dark); color: white; animation: faultBlink 0.5s infinite; }
+        .fault-tag.cleared { background: var(--color-success); color: white; }
+        .fault-tag.normal { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .fault-detail { font-size: 0.7em; color: var(--text-secondary); margin-top: 2px; font-style: italic; }
+        .event-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+        .event-indicator.fault-start { background: var(--color-danger); }
+        .event-indicator.fault-end { background: var(--color-success); }
+
+        .fault-message {
+            background: #fee2e2;
+            border-left: 4px solid var(--color-danger);
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: bold;
+            animation: slideDown 0.5s ease;
+            color: #991b1b;
+        }
+        .no-data-message {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--text-muted);
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+        .priority-info {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--color-warning);
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            color: var(--text-primary);
+        }
+        [data-theme="dark"] .priority-info {
+            background: rgba(245, 158, 11, 0.15);
+            border-left-color: var(--color-warning);
+            color: #fbbf24;
+        }
+        .simulation-info {
+            background: var(--bg-tertiary);
+            border-left: 4px solid var(--color-warning);
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            color: var(--text-primary);
+        }
+        [data-theme="dark"] .simulation-info {
+            background: rgba(245, 158, 11, 0.15);
+            border-left-color: var(--color-warning);
+            color: #fbbf24;
+        }
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+        .demo-scenario { 
+            background: var(--bg-tertiary); 
+            border: 1px solid var(--border-color); 
+            padding: 15px; 
+            border-radius: var(--btn-radius); 
+            margin-top: 12px; 
+            color: var(--text-primary);
+        }
+        .demo-scenario ol { padding-left: 20px; line-height: 2; font-size: 0.9em; color: var(--text-primary); }
+        .system-diagram { background: var(--bg-tertiary); padding: 15px; border-radius: var(--btn-radius); border: 1px solid var(--border-color); font-family: 'Courier New', monospace; font-size: 0.7em; overflow-x: auto; white-space: pre; color: var(--text-primary); }
+        .feature-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
+        .feature-table tr { border-bottom: 1px solid var(--border-color); }
+        .feature-table tr:nth-child(even) { background: var(--bg-tertiary); }
+        .feature-table td { padding: 8px 12px; color: var(--text-primary); }
+
+        .footer {
+            text-align: center;
+            color: var(--header-text-color);
+            padding: 15px;
+            padding-bottom: 30px;
+            font-size: 0.8em;
+            opacity: 0.85;
+            position: relative;
+            z-index: 1;
+        }
+
+        .fab-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 12px; }
+        .fab-main {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-xl);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            position: relative;
+            z-index: 2;
+            background: var(--brand-gradient);
+            color: white;
+        }
+        .fab-main:hover { transform: scale(1.1); }
+        .fab-main .fab-icon { transition: transform 0.3s; }
+        .fab-container.active .fab-main .fab-icon { transform: rotate(45deg); }
+        .fab-menu {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            position: absolute;
+            bottom: 60px;
+            right: 0;
+        }
+        .fab-container.active .fab-menu { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .fab-backdrop {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: -1;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .fab-container.active .fab-backdrop { opacity: 1; pointer-events: auto; }
+        .color-palette-panel { background: var(--bg-card); border-radius: 20px; padding: 16px; box-shadow: var(--shadow-xl); min-width: 260px; max-width: 300px; border: 1px solid var(--border-color); }
+        .palette-section { margin-bottom: 14px; }
+        .palette-section:last-child { margin-bottom: 0; }
+        .palette-section-title { font-size: 0.7em; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 700; }
+        .theme-toggle-group { display: flex; gap: 6px; }
+        .theme-toggle-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .theme-toggle-btn.active { border-color: var(--brand-primary); background: var(--brand-primary); color: white; }
+        .theme-toggle-btn .theme-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; }
+        .theme-toggle-btn.light-theme .theme-dot { background: #fbbf24; }
+        .theme-toggle-btn.dark-theme .theme-dot { background: #6366f1; }
+        .palette-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+        .color-swatch { width: 36px; height: 36px; border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 3px solid transparent; flex-shrink: 0; position: relative; }
+        .color-swatch:hover { transform: scale(1.15); }
+        .color-swatch.active { border-color: var(--text-primary); box-shadow: 0 0 0 3px var(--bg-card), 0 0 0 6px var(--brand-primary); transform: scale(1.1); }
+        .color-swatch.active::after { content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 14px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .swatch-default { background: linear-gradient(160deg, #667eea, #6b47b5, #764ba2, #7c4f9e); }
+        .swatch-ocean { background: linear-gradient(160deg, #0ea5e9, #0891b5, #0284c7, #0369a1); }
+        .swatch-forest { background: linear-gradient(160deg, #22c55e, #16a34a, #059669, #047857); }
+        .swatch-sunset { background: linear-gradient(160deg, #f97316, #ea580c, #ef4444, #dc2626); }
+        .swatch-purple { background: linear-gradient(160deg, #a855f7, #9333ea, #7c3aed, #6d28d9); }
+        .swatch-rose { background: linear-gradient(160deg, #f43f5e, #e11d48, #be123c, #9f1239); }
+        .swatch-amber { background: linear-gradient(160deg, #f59e0b, #d97706, #b45309, #92400e); }
+        .bg-swatch { border: 2px solid var(--border-color); }
+        .bg-swatch.bg-default { background: linear-gradient(160deg, #667eea, #6b47b5, #764ba2, #7c4f9e); }
+        .bg-swatch.bg-ocean { background: linear-gradient(160deg, #0c4a6e, #0d5c82, #0e7490, #0f8aa3); }
+        .bg-swatch.bg-forest { background: linear-gradient(160deg, #14532d, #155e35, #064e3b, #075e48); }
+        .bg-swatch.bg-sunset { background: linear-gradient(160deg, #7c2d12, #8b3a1a, #991b1b, #a52121); }
+        .bg-swatch.bg-purple { background: linear-gradient(160deg, #4c1d95, #5320a3, #5b21b6, #6428c4); }
+        .bg-swatch.bg-rose { background: linear-gradient(160deg, #881337, #931641, #9b1d45, #4c0519); }
+        .bg-swatch.bg-amber { background: linear-gradient(160deg, #78350f, #854015, #964a18, #451a03); }
+        .quick-preview { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+        .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .preview-label { font-size: 0.7em; color: var(--text-muted); }
+
+        .table-wrapper::-webkit-scrollbar { height: 6px; width: 6px; }
+        .table-wrapper::-webkit-scrollbar-track { background: var(--border-color); border-radius: 3px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: var(--brand-primary); border-radius: 3px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes faultBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes faultBlinkPill { 0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.2); } 50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.5); } }
+        @keyframes warningPulse { 0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); } 50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.4); } }
+        @keyframes autoGlow { 0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); } 50% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes textPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+        @keyframes btnPressEffect { 0% { transform: scale(1); } 50% { transform: scale(0.88); } 100% { transform: scale(1); } }
+        .updating { animation: valueUpdate 0.4s ease; }
+        @keyframes valueUpdate { 0% { transform: scale(1); } 50% { transform: scale(1.05); color: var(--brand-primary); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ Sistem Monitoring Daya DC</h1>
+            <p>📊 PZEM-017 + RPM Motor | Proteksi OV/OC | Power = V × I</p>
+            <div class="status-row">
+                <span class="status-badge connecting" id="connectionStatus">🟡 Menghubungkan...</span>
+                <span id="deviceStatusBadge" class="status-badge device-offline">📡 Offline</span>
+                <span id="rssiBadge" class="rssi-badge rssi-offline">📶 - dBm</span>
+                <span id="memoryBadge" class="memory-badge memory-offline">💾 -</span>
+                <span id="simulationBadge" class="simulation-badge" style="display:none;">🧪 SIMULASI</span>
+                <button class="btn" onclick="reconnectMQTT()">🔄 Reconnect</button>
+            </div>
+        </div>
+
+        <!-- PWA Install Prompt -->
+        <div id="pwaInstallPrompt" class="pwa-install-prompt" style="display:none; position:fixed; bottom:90px; right:20px; background:var(--bg-card); padding:15px 20px; border-radius:var(--card-radius); box-shadow:var(--shadow-xl); z-index:9998; border:1px solid var(--border-color); color:var(--text-primary); max-width:280px;">
+            <strong>📱 Pasang Aplikasi?</strong>
+            <p style="font-size:0.85em; margin:5px 0;">Pasang untuk akses cepat & offline</p>
+            <button class="btn" onclick="installPWA()">✅ Pasang</button>
+            <button class="btn" onclick="dismissInstall()" style="background:var(--bg-tertiary); color:var(--text-primary);">❌ Nanti</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('monitor')">📊 Monitor</button>
+            <button class="tab-btn" onclick="switchTab('logger')">📋 Pencatat Data</button>
+            <button class="tab-btn" onclick="switchTab('simulation')">🧪 Simulasi</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ Pengaturan</button>
+            <button class="tab-btn" onclick="switchTab('about')">📖 Tentang</button>
+        </div>
+
+        <!-- Monitor Tab -->
+        <div id="monitorTab" class="tab-content active">
+            <div class="priority-info">
+                <strong>⚡ PRIORITAS AUTO TRIP:</strong> Proteksi otomatis (Overvoltage & Overcurrent). 
+                Daya (Power) = V × I dihitung otomatis, tidak perlu batas manual.
+            </div>
+            <div id="waitingForData" class="no-data-message">
+                <strong>⏳ Menunggu data DC dari ESP32...</strong><br>
+                Sensor: PZEM-017 + RPM | Pastikan ESP32 terhubung ke broker HiveMQ.
+            </div>
+            <div id="faultNotification" class="fault-message" style="display:none;"></div>
+            
+            <div class="dashboard-grid">
+                <div class="card" id="mainMonitorCard">
+                    <div class="card-header">
+                        <div class="card-header-left">
+                            <h2>🔌 Parameter DC <span class="priority-badge">⚡ AUTO TRIP AKTIF</span></h2>
+                            <button class="haptic-toggle-inline active" id="hapticToggle" onclick="toggleHaptic()" title="Getar saat fault: AKTIF">📳</button>
+                        </div>
+                        <div class="relay-control">
+                            <button id="manualRelayBtn" class="action-btn-circle manual-btn manual-off-state" onclick="toggleManualRelay()">
+                                <span class="btn-icon" id="manualIcon">⏳</span>
+                                <span class="btn-label">Manual</span>
+                            </button>
+                            <button class="action-btn-circle reset-btn" onclick="sendCommand('reset_dc_fault')">
+                                <span class="btn-icon">🔄</span>
+                                <span class="btn-label">Reset</span>
+                            </button>
+                            <span id="dcRelayStatus" class="relay-status-pill waiting">
+                                <span class="relay-status-dot waiting-dot"></span> ⏳ Menunggu Data
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="parameter-grid">
+                        <div class="param-item waiting-state" id="dcVoltageItem">
+                            <div class="param-label">⚡ Tegangan DC</div>
+                            <div class="gauge-container" id="gaugeVoltageContainer">
+                                <div class="gauge-placeholder">⏳ Menunggu data...</div>
+                                <canvas id="gaugeVoltage" class="gauge-canvas" style="display:none;"></canvas>
+                            </div>
+                            <div class="param-value"><span class="param-value-text" id="dcVoltage">--</span><span class="param-unit">V</span></div>
+                            <div class="warning-text" id="dcVoltageWarning"></div>
+                        </div>
+                        <div class="param-item waiting-state" id="dcCurrentItem">
+                            <div class="param-label">🔌 Arus DC</div>
+                            <div class="gauge-container" id="gaugeCurrentContainer">
+                                <div class="gauge-placeholder">⏳ Menunggu data...</div>
+                                <canvas id="gaugeCurrent" class="gauge-canvas" style="display:none;"></canvas>
+                            </div>
+                            <div class="param-value"><span class="param-value-text" id="dcCurrent">--</span><span class="param-unit">A</span></div>
+                            <div class="warning-text" id="dcCurrentWarning"></div>
+                        </div>
+                        <div class="param-item waiting-state" id="dcPowerItem">
+                            <div class="param-label">💡 Daya DC (V×I)</div>
+                            <div class="gauge-container" id="gaugePowerContainer">
+                                <div class="gauge-placeholder">⏳ Menunggu data...</div>
+                                <canvas id="gaugePower" class="gauge-canvas" style="display:none;"></canvas>
+                            </div>
+                            <div class="param-value"><span class="param-value-text" id="dcPower">--</span><span class="param-unit">W</span></div>
+                        </div>
+                        <div class="param-item waiting-state" id="dcEnergyItem">
+                            <div class="param-label">🔋 Energi DC</div>
+                            <div class="gauge-container" id="gaugeEnergyContainer">
+                                <div class="gauge-placeholder">⏳ Menunggu data...</div>
+                                <canvas id="gaugeEnergy" class="gauge-canvas" style="display:none;"></canvas>
+                            </div>
+                            <div class="param-value"><span class="param-value-text" id="dcEnergy">--</span><span class="param-unit">kWh</span></div>
+                        </div>
+                        <div class="param-item waiting-state" id="dcRPMItem">
+                            <div class="param-label">🔄 RPM Motor</div>
+                            <div class="gauge-container" id="gaugeRPMContainer">
+                                <div class="gauge-placeholder">⏳ Menunggu data...</div>
+                                <canvas id="gaugeRPM" class="gauge-canvas" style="display:none;"></canvas>
+                            </div>
+                            <div class="param-value"><span class="param-value-text" id="dcRPM">--</span><span class="param-unit">RPM</span></div>
+                            <div style="font-size:0.6em;color:var(--text-muted);margin-top:2px;" id="rpmTimestamp"></div>
+                        </div>
+                        <div class="param-item waiting-state" id="dcAlarmItem">
+                            <div class="param-label">🚨 Status Alarm</div>
+                            <div style="display:flex;align-items:center;justify-content:center;height:80px;">
+                                <span id="dcAlarmStatus" style="font-size:2.5em;">--</span>
+                            </div>
+                            <div class="param-value"><span id="dcAlarmText">--</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="badge-container">
+                        <span id="dcOvBadge" class="protection-badge waiting">⏳ Menunggu</span>
+                        <span id="dcOcBadge" class="protection-badge waiting">⏳ Menunggu</span>
+                        <span id="dcFaultBadge" class="protection-badge waiting">⏳ Menunggu Data</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>📈 Data Real-time DC (10 pembacaan terakhir)</h3>
+                    <div class="chart-controls">
+                        <button class="btn active" onclick="switchChart('voltage')">⚡ Tegangan</button>
+                        <button class="btn" onclick="switchChart('current')">🔌 Arus</button>
+                        <button class="btn" onclick="switchChart('power')">💡 Daya</button>
+                        <button class="btn" onclick="switchChart('energy')">🔋 Energi</button>
+                        <button class="btn" onclick="switchChart('rpm')">🔄 RPM</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="dataChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Pencatat Data -->
+        <div id="loggerTab" class="tab-content">
+            <div class="data-logger-container">
+                <div class="logger-header">
+                    <h3>📋 Riwayat Pencatat Data DC</h3>
+                    <div class="logger-controls">
+                        <button class="btn" onclick="exportLoggerData()">📥 Ekspor CSV</button>
+                        <button class="btn" onclick="clearLoggerData()" style="background:#ef4444;">🗑️ Hapus</button>
+                    </div>
+                </div>
+                <div class="logger-stats">
+                    <div class="logger-stat-item">📊 Total: <span class="logger-stat-value" id="totalRecords">0</span></div>
+                    <div class="logger-stat-item">⚡ Fault: <span class="logger-stat-value" id="faultEvents">0</span></div>
+                    <div class="logger-stat-item">🟢 Cleared: <span class="logger-stat-value" id="faultCleared">0</span></div>
+                </div>
+                <div id="faultSummary" class="priority-info" style="display:none;">
+                    <strong>⚠️ Ringkasan Gangguan:</strong><span id="faultSummaryText"></span>
+                </div>
+                <div class="table-wrapper">
+                    <table class="logger-table">
+                        <thead>
+                            <tr>
+                                <th>No</th><th>Waktu</th><th>V</th><th>A</th><th>W</th>
+                                <th>kWh</th><th>RPM</th><th>Alarm</th><th>Relay</th><th>Status</th><th>Detail</th><th>Event</th>
+                            </tr>
+                        </thead>
+                        <tbody id="loggerTableBody">
+                            <tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:20px;">📋 Menunggu data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Simulasi -->
+        <div id="simulationTab" class="tab-content">
+            <div class="simulation-info">
+                <strong>🧪 MODE DEMONSTRASI:</strong> Simulasikan OV/OC untuk demo auto-trip protection.
+            </div>
+            <div class="card">
+                <div class="card-header"><h2>🧪 Simulasi Gangguan DC</h2></div>
+                <div class="parameter-grid">
+                    <div class="param-item">
+                        <div class="param-label">⚡ Overvoltage DC</div>
+                        <button class="sim-btn overvoltage-btn" onclick="sendCommand('simulate_overvoltage')">🔥 Simulasikan</button>
+                        <div style="font-size:0.7em;margin-top:5px;color:var(--text-secondary);">V > <span id="simOvLimit" style="color:var(--text-primary);">60</span>V</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">🔌 Overcurrent DC</div>
+                        <button class="sim-btn overcurrent-btn" onclick="sendCommand('simulate_overcurrent')">⚡ Simulasikan</button>
+                        <div style="font-size:0.7em;margin-top:5px;color:var(--text-secondary);">A > <span id="simOcLimit" style="color:var(--text-primary);">50</span>A</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">💀 Keduanya</div>
+                        <button class="sim-btn both-btn" onclick="sendCommand('simulate_both')">☠️ Simulasikan</button>
+                        <div style="font-size:0.7em;margin-top:5px;color:var(--text-secondary);">OV & OC bersamaan</div>
+                    </div>
+                    <div class="param-item">
+                        <div class="param-label">🛑 Hentikan</div>
+                        <button class="sim-btn stop-btn" onclick="sendCommand('stop_simulation')">✅ Stop</button>
+                        <div style="font-size:0.7em;margin-top:5px;color:var(--text-secondary);">Kembali normal</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:12px;">
+                <div class="card-header"><h2>📋 Skenario Demo DC</h2></div>
+                <div class="demo-scenario">
+                    <ol>
+                        <li><strong>Normal:</strong> Monitoring V, A, W, kWh, RPM</li>
+                        <li><strong>OV:</strong> Klik "Overvoltage" → Relay trip</li>
+                        <li><strong>Reset:</strong> Stop sim → Reset → Relay ON</li>
+                        <li><strong>OC:</strong> Klik "Overcurrent" → Relay trip</li>
+                        <li><strong>Manual Blocked:</strong> Klik Manual saat fault → Diblokir</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Pengaturan -->
+        <div id="settingsTab" class="tab-content">
+            <div class="settings-panel">
+                <h3>🛡️ Batas Proteksi DC</h3>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>⚡ Batas Tegangan DC</label>
+                        <div class="input-group">
+                            <input type="number" id="dcVoltageLimit" min="1" max="300" step="0.1" placeholder="1-300 V">
+                            <span class="input-unit">V</span>
+                        </div>
+                        <button onclick="setLimit('dc_v')">✅ Terapkan</button>
+                        <div class="limit-value">Saat ini: <span id="currentDcVLimit">--</span></div>
+                    </div>
+                    <div class="setting-item">
+                        <label>🔌 Batas Arus DC</label>
+                        <div class="input-group">
+                            <input type="number" id="dcCurrentLimit" min="0.1" max="300" step="0.1" placeholder="0.1-300 A">
+                            <span class="input-unit">A</span>
+                        </div>
+                        <button onclick="setLimit('dc_i')">✅ Terapkan</button>
+                        <div class="limit-value">Saat ini: <span id="currentDcILimit">--</span></div>
+                    </div>
+                </div>
+                <div class="priority-info" style="margin-top:12px;">
+                    <strong>ℹ️ Catatan:</strong> Daya (Power) = V × I dihitung otomatis oleh PZEM-017. 
+                    Tidak perlu batas manual untuk daya karena merupakan hasil perkalian tegangan dan arus.
+                </div>
+            </div>
+
+            <div class="settings-panel">
+                <h3>ℹ️ Informasi Sistem</h3>
+                <div class="info-row"><span class="info-label">🛡️ Status Proteksi</span><span class="info-value" id="protectionStatusText">--</span></div>
+                <div class="info-row"><span class="info-label">🔄 Status Relay</span><span class="info-value" id="dcRelayMode">--</span></div>
+                <div class="info-row"><span class="info-label">⚠️ Status Fault</span><span class="info-value" id="dcFaultStatus">--</span></div>
+                <div class="info-row"><span class="info-label">🔄 RPM Motor</span><span class="info-value" id="rpmInfo">--</span></div>
+                <div class="info-row"><span class="info-label">⏱️ Uptime ESP32</span><span class="info-value" id="uptimeValue">--</span></div>
+                <div class="info-row"><span class="info-label">🔄 Sinkron RPM</span><span class="info-value" id="rpmSyncInfo">--</span></div>
+                <div class="info-row"><span class="info-label">🧪 Simulasi</span><span class="info-value" id="simulationStatus">--</span></div>
+                <div class="info-row"><span class="info-label">📡 Perangkat</span><span class="info-value" id="deviceConnectionInfo">--</span></div>
+                <div class="info-row"><span class="info-label">📶 Sinyal WiFi</span><span class="info-value" id="rssiInfo">--</span></div>
+                <div class="info-row"><span class="info-label">📱 PWA</span><span class="info-value" id="pwaStatus">--</span></div>
+                <div class="info-row"><span class="info-label">🔗 MQTT</span><span class="info-value" id="mqttConnectionInfo">--</span></div>
+                <div class="info-row"><span class="info-label">🎨 Tema</span><span class="info-value" id="activeThemeInfo">--</span></div>
+                <div class="info-row"><span class="info-label">🖌️ Palet</span><span class="info-value" id="activePaletteInfo">--</span></div>
+                <div class="info-row"><span class="info-label">📳 Haptic</span><span class="info-value" id="hapticStatusInfo">AKTIF</span></div>
+                <div class="info-row"><span class="info-label">📟 Sensor</span><span class="info-value">PZEM-017 + RPM</span></div>
+            </div>
+            
+            <div class="settings-panel">
+                <h3>💾 Memori ESP32</h3>
+                <div class="memory-info-container">
+                    <div class="memory-card">
+                        <div class="memory-card-title">🧠 Total Heap</div>
+                        <div class="memory-bar-container">
+                            <div class="memory-bar" id="heapBar" style="width:0%;background:#667eea;"></div>
+                            <div class="memory-bar-text" id="heapBarText">-</div>
+                        </div>
+                    </div>
+                    <div class="memory-card">
+                        <div class="memory-card-title">💾 Heap Bebas</div>
+                        <div class="memory-bar-container">
+                            <div class="memory-bar" id="freeHeapBar" style="width:0%;background:#10b981;"></div>
+                            <div class="memory-bar-text" id="freeHeapBarText">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-panel">
+                <div class="action-buttons">
+                    <button class="btn" onclick="sendCommand('get_status')">🔄 Segarkan</button>
+                    <button class="btn" onclick="reconnectMQTT()">🔗 Reconnect MQTT</button>
+                    <button class="btn" onclick="sendCommand('reset_dc_fault')" style="background:var(--color-danger);">⚠️ Reset Fault</button>
+                    <button class="btn" onclick="sendCommand('reset_energy')" style="background:var(--color-warning);">🔋 Reset Energi</button>
+                    <button class="btn" onclick="clearCache()" style="background:#6b7280;">🗑️ Hapus Cache</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Tentang -->
+        <div id="aboutTab" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h2>📖 Tentang Sistem</h2></div>
+                <h3 style="color:var(--brand-primary);margin:15px 0 10px 0;">🛠️ Arsitektur</h3>
+                <div class="system-diagram">
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
+│  PZEM-017   │────▶│   ESP32      │────▶│    MQTT     │────▶│     Web      │
+│ DC Sensor   │     │  Controller  │     │   Broker    │     │  Dashboard   │
+│ + RPM Sensor│     │  (FreeRTOS)  │     │  (HiveMQ)   │     │   (PWA)      │
+└─────────────┘     └─────────────┘     └─────────────┘     └──────────────┘
+
+📡 MQTT: HiveMQ WSS port 8884
+🔌 Sensor: PZEM-017 DC (V, A, W, kWh, Alarm)
+🔄 RPM: Hall Effect/Optocoupler sensor
+🛡️ Proteksi: Overvoltage & Overcurrent
+💡 Power = V × I (auto-calculated)
+🔄 RPM Sync: 1000ms interval (LCD & MQTT aligned)</div>
+
+                <h3 style="color:var(--brand-primary);margin:20px 0 10px 0;">✨ Fitur</h3>
+                <table class="feature-table">
+                    <tr><td>📊</td><td><strong>Monitoring DC</strong></td><td>V, A, W, kWh, RPM, Alarm</td></tr>
+                    <tr><td>⚡</td><td><strong>Auto-Trip</strong></td><td>OV & OC protection</td></tr>
+                    <tr><td>🔄</td><td><strong>Kontrol Relay</strong></td><td>Manual / Auto / Reset</td></tr>
+                    <tr><td>📋</td><td><strong>Data Logger</strong></td><td>Riwayat fault otomatis</td></tr>
+                    <tr><td>🧪</td><td><strong>Simulasi</strong></td><td>OV, OC, Both</td></tr>
+                    <tr><td>🔄</td><td><strong>RPM Gauge</strong></td><td>Monitoring kecepatan motor DC</td></tr>
+                </table>
+
+                <h3 style="color:var(--brand-primary);margin:20px 0 10px 0;">📝 Versi</h3>
+                <div style="font-size:0.9em;color:var(--text-primary);background:var(--bg-tertiary);padding:15px;border-radius:8px;">
+                    <p><strong>v8.1</strong> - PZEM-017 + RPM (Sync Fix):</p>
+                    <ul style="padding-left:20px;line-height:1.8;">
+                        <li>✅ Sensor PZEM-017 via RS485 Modbus</li>
+                        <li>✅ RPM Motor via Hall Effect sensor</li>
+                        <li>✅ Proteksi OV & OC (tanpa batas power manual)</li>
+                        <li>✅ Power = V × I dihitung otomatis</li>
+                        <li>✅ RPM sync: 1000ms interval (LCD & MQTT aligned)</li>
+                        <li>✅ RPM timestamp di payload MQTT</li>
+                        <li>✅ LWT MQTT untuk deteksi offline</li>
+                        <li>✅ Non-blocking safePublish</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🔗 HiveMQ WSS | 📊 PZEM-017 + RPM | 📱 PWA</p>
+            <p>🛡️ Proteksi: V &gt;<span id="dcVlimitDisplay">60</span>V / A &gt;<span id="dcIlimitDisplay">50</span>A | Power = V × I (auto)</p>
+            <p>🔄 RPM Sync: 1000ms | 🎨 FAB Palette | 🌓 Dark/Light | 📳 Haptic | 📐 Responsive</p>
+        </div>
+    </div>
+
+    <!-- FAB -->
+    <div class="fab-container" id="fabContainer">
+        <div class="fab-backdrop" id="fabBackdrop" onclick="closeFab()"></div>
+        <button class="fab-main" id="fabMain" onclick="toggleFab()"><span class="fab-icon">🎨</span></button>
+        <div class="fab-menu">
+            <div class="color-palette-panel">
+                <div class="palette-section">
+                    <div class="palette-section-title">🌓 Tema</div>
+                    <div class="theme-toggle-group">
+                        <button class="theme-toggle-btn light-theme active" id="themeLightBtn" onclick="setTheme('light')"><span class="theme-dot"></span> ☀️</button>
+                        <button class="theme-toggle-btn dark-theme" id="themeDarkBtn" onclick="setTheme('dark')"><span class="theme-dot"></span> 🌙</button>
+                    </div>
+                </div>
+                <div class="palette-section">
+                    <div class="palette-section-title">🖌️ Palet</div>
+                    <div class="palette-swatches" id="paletteSwatches">
+                        <div class="color-swatch swatch-default active" data-palette="default" onclick="setPalette('default')"></div>
+                        <div class="color-swatch swatch-ocean" data-palette="ocean" onclick="setPalette('ocean')"></div>
+                        <div class="color-swatch swatch-forest" data-palette="forest" onclick="setPalette('forest')"></div>
+                        <div class="color-swatch swatch-sunset" data-palette="sunset" onclick="setPalette('sunset')"></div>
+                        <div class="color-swatch swatch-purple" data-palette="purple" onclick="setPalette('purple')"></div>
+                        <div class="color-swatch swatch-rose" data-palette="rose" onclick="setPalette('rose')"></div>
+                        <div class="color-swatch swatch-amber" data-palette="amber" onclick="setPalette('amber')"></div>
+                    </div>
+                </div>
+                <div class="palette-section">
+                    <div class="palette-section-title">🖼️ Background</div>
+                    <div class="palette-swatches" id="bgPaletteSwatches">
+                        <div class="color-swatch bg-swatch bg-default active" data-bg-palette="bg-default" onclick="setBgPalette('bg-default')"></div>
+                        <div class="color-swatch bg-swatch bg-ocean" data-bg-palette="bg-ocean" onclick="setBgPalette('bg-ocean')"></div>
+                        <div class="color-swatch bg-swatch bg-forest" data-bg-palette="bg-forest" onclick="setBgPalette('bg-forest')"></div>
+                        <div class="color-swatch bg-swatch bg-sunset" data-bg-palette="bg-sunset" onclick="setBgPalette('bg-sunset')"></div>
+                        <div class="color-swatch bg-swatch bg-purple" data-bg-palette="bg-purple" onclick="setBgPalette('bg-purple')"></div>
+                        <div class="color-swatch bg-swatch bg-rose" data-bg-palette="bg-rose" onclick="setBgPalette('bg-rose')"></div>
+                        <div class="color-swatch bg-swatch bg-amber" data-bg-palette="bg-amber" onclick="setBgPalette('bg-amber')"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ KONFIGURASI ============
+        const broker = "broker.hivemq.com";
+        const wssPort = 8884;
+        const topic = "power/monitor/data";
+        const commandTopic = "power/monitor/command";
+        const statusTopic = "power/monitor/status";
+        
+        const persistentClientId = (() => {
+            const saved = localStorage.getItem('mqttClientId');
+            if (saved) return saved;
+            const newId = "web_dc_rpm_" + Math.random().toString(16).substr(2, 8) + "_" + Date.now();
+            localStorage.setItem('mqttClientId', newId);
+            return newId;
+        })();
+
+        // ============ VARIABEL ============
+        let currentLimits = { dc_voltage: 60, dc_current: 50 };
+        let currentFaults = { dc_fault: false };
+        let currentRelayState = false, currentRelayAuto = true;
+        let lastDataTimestamp = 0, deviceOnline = false;
+        let currentRSSI = null, currentFreeHeap = null, lastRpmTimestamp = 0;
+        let simulationActive = false, dataReceivedFromESP = false;
+        let previousFaultState = false, previousOvervoltage = false, previousOvercurrent = false;
+        let globalSequenceNumber = 1, reconnectAttempts = 0;
+        const maxReconnectDelay = 30000;
+        let lastHeartbeat = Date.now();
+        const HEARTBEAT_TIMEOUT = 120000;
+        let mqttReconnectTimer = null;
+        const DATA_INTERVAL = 1000, OFFLINE_THRESHOLD = DATA_INTERVAL * 4;
+        const maxDataPoints = 10, maxLoggerEntries = 20;
+
+        const dataStore = { timestamps: [], dcVoltage: [], dcCurrent: [], dcPower: [], dcEnergy: [], dcRPM: [] };
+        let loggerData = [], faultEventCount = 0, faultClearedCount = 0;
+        let chart, currentChartType = 'voltage', mqttClient = null;
+        let deferredPrompt = null, pwaInstalled = false;
+
+        // 🔧 DEBUG MODE
+        window.debugMode = window.location.search.includes('debug');
+        if (window.debugMode) {
+            console.log('🐛 DEBUG MODE AKTIF - RPM Sync Monitor');
+            console.log('Client ID:', persistentClientId);
+            console.log('Sync interval:', DATA_INTERVAL, 'ms');
+        }
+
+        // ============ HAPTIC ============
+        let hapticEnabled = localStorage.getItem('hapticEnabled') !== 'false';
+        let hapticInterval = null, isFaultActive = false, currentFaultType = null;
+
+        function initHaptic() {
+            const toggle = document.getElementById('hapticToggle');
+            const statusInfo = document.getElementById('hapticStatusInfo');
+            if (hapticEnabled) { toggle.className = 'haptic-toggle-inline active'; toggle.textContent = '📳'; }
+            else { toggle.className = 'haptic-toggle-inline'; toggle.textContent = '🔇'; }
+            if (statusInfo) statusInfo.textContent = hapticEnabled ? '📳 AKTIF' : '🔇 NONAKTIF';
+        }
+
+        function toggleHaptic() {
+            hapticEnabled = !hapticEnabled;
+            localStorage.setItem('hapticEnabled', hapticEnabled);
+            initHaptic();
+            if (!hapticEnabled) stopHapticInterval();
+            else if (isFaultActive) startHapticInterval(currentFaultType);
+        }
+
+        function startHapticInterval(faultType) {
+            if (!hapticEnabled || !navigator.vibrate) return;
+            stopHapticInterval();
+            isFaultActive = true; currentFaultType = faultType;
+            const patterns = { dc_overvoltage: [300,200,300], dc_overcurrent: [150,100,150], dc_both: [200,80,200,80,400], default: [250,150,250] };
+            const pattern = patterns[faultType] || patterns.default;
+            navigator.vibrate(pattern);
+            document.getElementById('hapticToggle')?.classList.add('fault-active-haptic');
+            hapticInterval = setInterval(() => { if (hapticEnabled && isFaultActive) navigator.vibrate(pattern); else stopHapticInterval(); }, 2000);
+        }
+
+        function stopHapticInterval() {
+            if (hapticInterval) { clearInterval(hapticInterval); hapticInterval = null; }
+            isFaultActive = false; currentFaultType = null;
+            navigator.vibrate?.(0);
+            document.getElementById('hapticToggle')?.classList.remove('fault-active-haptic');
+        }
+
+        function triggerFaultHaptic(dcData) {
+            if (!hapticEnabled) return;
+            const faultActive = dcData.fault_active || false;
+            if (faultActive) {
+                let ft = 'dc_fault';
+                if (dcData.overvoltage && dcData.overcurrent) ft = 'dc_both';
+                else if (dcData.overvoltage) ft = 'dc_overvoltage';
+                else if (dcData.overcurrent) ft = 'dc_overcurrent';
+                if (!isFaultActive) { startHapticInterval(ft); triggerFaultShake(); }
+                else if (currentFaultType !== ft) startHapticInterval(ft);
+            } else if (isFaultActive) { navigator.vibrate?.([50,150,50]); setTimeout(() => navigator.vibrate?.(0), 300); stopHapticInterval(); }
+        }
+
+        function triggerFaultShake() {
+            const card = document.getElementById('mainMonitorCard');
+            if (!card) return;
+            card.classList.remove('fault-shake');
+            void card.offsetWidth;
+            card.classList.add('fault-shake');
+            setTimeout(() => card.classList.remove('fault-shake'), 600);
+        }
+
+        // ============ GAUGE ============
+        class CircularGauge {
+            constructor(canvasId, config) {
+                this.canvas = document.getElementById(canvasId);
+                if (!this.canvas) return;
+                this.ctx = this.canvas.getContext('2d');
+                this.config = { maxValue: 100, minValue: 0, warningThreshold: 80, dangerThreshold: 90, colorNormal: '#6366f1', colorWarning: '#f59e0b', colorDanger: '#ef4444', unit: '', decimals: 1, ...config };
+                this.currentValue = 0; this.targetValue = 0; this.animationFrame = null;
+                this.resize();
+            }
+            updateConfig(newConfig) {
+                Object.assign(this.config, newConfig);
+            }
+            resize() {
+                if (!this.canvas) return;
+                const container = this.canvas.parentElement;
+                const size = Math.min(container?.clientWidth || 190, 190);
+                this.canvas.width = size * 2; this.canvas.height = size * 2;
+                this.canvas.style.width = size + 'px'; this.canvas.style.height = size + 'px';
+                this.draw(this.currentValue);
+            }
+            setValue(value) {
+                this.targetValue = Math.max(this.config.minValue, Math.min(this.config.maxValue, value));
+                if (!this.animationFrame) this.animate();
+            }
+            animate() {
+                const diff = this.targetValue - this.currentValue;
+                const step = diff * 0.25;
+                if (Math.abs(diff) < 0.005) { this.currentValue = this.targetValue; this.draw(this.currentValue); this.animationFrame = null; return; }
+                this.currentValue += step;
+                this.draw(this.currentValue);
+                this.animationFrame = requestAnimationFrame(() => this.animate());
+            }
+            draw(value) {
+                if (!this.ctx || !this.canvas) return;
+                const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height;
+                const cx = w/2, cy = h/2, radius = Math.min(w,h)*0.38, lw = radius*0.22;
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                ctx.clearRect(0,0,w,h);
+                
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, Math.PI*0.75, Math.PI*2.25);
+                ctx.strokeStyle = isDark ? '#334155' : '#e5e7eb';
+                ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+                
+                const pct = Math.max(0, Math.min(1, (value - this.config.minValue) / (this.config.maxValue - this.config.minValue)));
+                const sa = Math.PI*0.75, ea = sa + Math.PI*1.5*pct;
+                const color = value >= this.config.maxValue*(this.config.dangerThreshold/100) ? this.config.colorDanger :
+                              value >= this.config.maxValue*(this.config.warningThreshold/100) ? this.config.colorWarning :
+                              getComputedStyle(document.documentElement).getPropertyValue('--gauge-normal').trim() || this.config.colorNormal;
+                
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, sa, ea);
+                ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+                ctx.shadowColor = color; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = isDark ? '#94a3b8' : '#9ca3af';
+                ctx.font = `${radius*0.3}px 'Segoe UI', sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(this.config.unit, cx, cy);
+            }
+        }
+
+        let gauges = {};
+
+        function initGauges() {
+            const vMax = Math.min(currentLimits.dc_voltage * 1.2 || 72, 300);
+            const iMax = Math.ceil((currentLimits.dc_current || 50) * 1.5 / 5) * 5;
+            const pMax = Math.ceil((currentLimits.dc_voltage * currentLimits.dc_current) / 100) * 100;
+            const style = getComputedStyle(document.documentElement);
+            const gn = style.getPropertyValue('--gauge-normal').trim() || '#6366f1';
+            
+            gauges.voltage = new CircularGauge('gaugeVoltage', { maxValue: vMax, warningThreshold: (currentLimits.dc_voltage/vMax)*100, dangerThreshold: (currentLimits.dc_voltage*1.05/vMax)*100, colorNormal: gn, unit: 'V', decimals: 1 });
+            gauges.current = new CircularGauge('gaugeCurrent', { maxValue: iMax, warningThreshold: (currentLimits.dc_current/iMax)*100, dangerThreshold: (currentLimits.dc_current*1.1/iMax)*100, colorNormal: '#3b82f6', unit: 'A', decimals: 2 });
+            gauges.power = new CircularGauge('gaugePower', { maxValue: pMax, warningThreshold: 75, dangerThreshold: 90, colorNormal: '#10b981', unit: 'W', decimals: 1 });
+            gauges.energy = new CircularGauge('gaugeEnergy', { maxValue: 100, warningThreshold: 80, dangerThreshold: 90, colorNormal: '#f59e0b', unit: 'kWh', decimals: 3 });
+            gauges.rpm = new CircularGauge('gaugeRPM', { maxValue: 3000, warningThreshold: 85, dangerThreshold: 95, colorNormal: '#8b5cf6', unit: 'RPM', decimals: 0 });
+        }
+
+        function updateGaugeRanges() {
+            const vMax = Math.min(currentLimits.dc_voltage * 1.2 || 72, 300);
+            const iMax = Math.ceil((currentLimits.dc_current || 50) * 1.5 / 5) * 5;
+            const pMax = Math.ceil((currentLimits.dc_voltage * currentLimits.dc_current) / 100) * 100;
+            if (gauges.voltage) gauges.voltage.updateConfig({ maxValue: vMax, warningThreshold: (currentLimits.dc_voltage/vMax)*100, dangerThreshold: (currentLimits.dc_voltage*1.05/vMax)*100 });
+            if (gauges.current) gauges.current.updateConfig({ maxValue: iMax, warningThreshold: (currentLimits.dc_current/iMax)*100, dangerThreshold: (currentLimits.dc_current*1.1/iMax)*100 });
+            if (gauges.power) gauges.power.updateConfig({ maxValue: pMax });
+        }
+
+        function showGauges() {
+            ['gaugeVoltage','gaugeCurrent','gaugePower','gaugeEnergy','gaugeRPM'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.style.display = 'block'; el.parentElement?.querySelector('.gauge-placeholder')?.style?.setProperty('display', 'none'); }
+            });
+            document.querySelectorAll('.param-item.waiting-state').forEach(item => item.classList.remove('waiting-state'));
+            document.getElementById('waitingForData').style.display = 'none';
+        }
+
+        // ============ RSSI & MEMORY ============
+        function updateRSSI(rssi) {
+            currentRSSI = rssi;
+            const badge = document.getElementById('rssiBadge'), info = document.getElementById('rssiInfo');
+            if (!deviceOnline || rssi == null) {
+                if (badge) { badge.textContent = '📶 - dBm'; badge.className = 'rssi-badge rssi-offline'; }
+                if (info) info.textContent = '- dBm';
+                return;
+            }
+            let cls = 'rssi-badge ';
+            if (rssi >= -50) cls += 'rssi-excellent';
+            else if (rssi >= -65) cls += 'rssi-good';
+            else if (rssi >= -75) cls += 'rssi-fair';
+            else cls += 'rssi-poor';
+            if (badge) { badge.textContent = '📶 ' + rssi + ' dBm'; badge.className = cls; }
+            if (info) info.textContent = rssi + ' dBm';
+        }
+
+        function updateMemoryDisplay(freeHeap) {
+            currentFreeHeap = freeHeap;
+            const badge = document.getElementById('memoryBadge');
+            const typicalTotal = 300 * 1024;
+            if (!deviceOnline || freeHeap == null || isNaN(freeHeap)) {
+                if (badge) { badge.textContent = '💾 -'; badge.className = 'memory-badge memory-offline'; }
+                ['heapBar','freeHeapBar'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = '0%'; });
+                ['heapBarText','freeHeapBarText'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '-'; });
+                return;
+            }
+            const freePct = Math.round((freeHeap / typicalTotal) * 100);
+            if (badge) { badge.textContent = '💾 ' + (freeHeap >= 1024 ? (freeHeap/1024).toFixed(1)+' KB' : freeHeap+' B'); badge.className = 'memory-badge ' + (freePct >= 50 ? 'memory-good' : freePct >= 25 ? 'memory-moderate' : 'memory-low'); }
+            document.getElementById('heapBar').style.width = '100%';
+            document.getElementById('freeHeapBar').style.width = freePct + '%';
+            document.getElementById('heapBarText').textContent = 'Total: ' + (typicalTotal/1024).toFixed(0) + ' KB';
+            document.getElementById('freeHeapBarText').textContent = 'Bebas: ' + (freeHeap/1024).toFixed(1) + ' KB (' + freePct + '%)';
+        }
+
+        // ============ RPM TIMESTAMP DISPLAY ============
+        function updateRPMTimestamp(rpmTimestamp) {
+            if (rpmTimestamp) {
+                lastRpmTimestamp = rpmTimestamp;
+                const elapsed = Date.now() - rpmTimestamp;
+                const syncInfo = document.getElementById('rpmSyncInfo');
+                const rpmTsEl = document.getElementById('rpmTimestamp');
+                if (syncInfo) syncInfo.textContent = '⏱️ ' + elapsed + 'ms lalu';
+                if (rpmTsEl) rpmTsEl.textContent = 'Diukur: ' + new Date(rpmTimestamp).toLocaleTimeString('id-ID', {hour12:false});
+                if (window.debugMode) console.log('[RPM SYNC] Timestamp:', rpmTimestamp, 'Age:', elapsed, 'ms');
+            }
+        }
+
+        // ============ LOGGER ============
+        function getFaultDetail(dcData) {
+            let faults = [];
+            if (dcData.overvoltage) faults.push('⚡ V Lebih (' + dcData.voltage.toFixed(1) + 'V > ' + currentLimits.dc_voltage + 'V)');
+            if (dcData.overcurrent) faults.push('🔌 A Lebih (' + dcData.current.toFixed(2) + 'A > ' + currentLimits.dc_current + 'A)');
+            return faults.length ? faults : ['⚠️ Tersimpan'];
+        }
+
+        function addLoggerEntry(dcData, eventType = 'normal') {
+            const ts = new Date().toLocaleString('id-ID', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+            const entry = { id: globalSequenceNumber++, timestamp: ts, voltage: dcData.voltage, current: dcData.current, power: dcData.power, energy: dcData.energy, rpm: dcData.rpm || 0, alarm: dcData.alarm_status || false, relay_state: dcData.relay_state, relay_auto: dcData.relay_auto, fault_active: dcData.fault_active || false, overvoltage: dcData.overvoltage || false, overcurrent: dcData.overcurrent || false, fault_detail: getFaultDetail(dcData), event_type: eventType };
+            loggerData.push(entry);
+            if (loggerData.length > maxLoggerEntries) { loggerData = loggerData.slice(-maxLoggerEntries); globalSequenceNumber = maxLoggerEntries + 1; }
+            if (eventType === 'fault_start') faultEventCount++;
+            else if (eventType === 'fault_end') faultClearedCount++;
+            saveLoggerData(); updateLoggerTable();
+        }
+
+        function checkFaultTransition(dcData) {
+            const cf = dcData.fault_active || false;
+            let et = 'normal';
+            if (cf && !previousFaultState) et = 'fault_start';
+            else if (!cf && previousFaultState) et = 'fault_end';
+            previousFaultState = cf; previousOvervoltage = dcData.overvoltage || false; previousOvercurrent = dcData.overcurrent || false;
+            return et;
+        }
+
+        function saveLoggerData() {
+            try { localStorage.setItem('loggerData_dc', JSON.stringify(loggerData)); localStorage.setItem('loggerStats_dc', JSON.stringify({ faultEventCount, faultClearedCount })); } catch(e) {}
+        }
+
+        function updateLoggerTable() {
+            const tbody = document.getElementById('loggerTableBody');
+            if (!tbody) return;
+            if (!loggerData.length) { tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;">📋 Belum ada data</td></tr>'; }
+            else {
+                tbody.innerHTML = loggerData.slice().reverse().map(e => {
+                    let rc = '', fs = '', ev = '';
+                    if (e.event_type === 'fault_start') { rc = 'fault-row'; fs = `<span class="fault-tag ${e.overvoltage&&e.overcurrent?'multiple':e.overvoltage?'overvoltage':'overcurrent'}">${e.overvoltage&&e.overcurrent?'⚡🔌':'⚡'} Fault</span>`; ev = '<span class="event-indicator fault-start"></span>Mulai'; }
+                    else if (e.event_type === 'fault_end') { rc = 'fault-cleared-row'; fs = '<span class="fault-tag cleared">✅ Selesai</span>'; ev = '<span class="event-indicator fault-end"></span>Selesai'; }
+                    else { fs = '<span class="fault-tag normal">Normal</span>'; ev = 'Normal'; }
+                    return `<tr class="${rc}"><td>${e.id}</td><td>${e.timestamp}</td><td>${e.voltage.toFixed(1)}</td><td>${e.current.toFixed(2)}</td><td>${e.power.toFixed(1)}</td><td>${e.energy.toFixed(3)}</td><td>${e.rpm.toFixed(0)}</td><td>${e.alarm?'🚨':'✅'}</td><td>${e.relay_state?'🟢':'🔴'}</td><td>${fs}</td><td>${(e.fault_detail||[]).map(d=>`<div class="fault-detail">${d}</div>`).join('')}</td><td>${ev}</td></tr>`;
+                }).join('');
+            }
+            document.getElementById('totalRecords').textContent = loggerData.length;
+            document.getElementById('faultEvents').textContent = faultEventCount;
+            document.getElementById('faultCleared').textContent = faultClearedCount;
+        }
+
+        function exportLoggerData() {
+            if (!loggerData.length) { alert('Tidak ada data!'); return; }
+            let csv = 'No,Waktu,V,A,W,kWh,RPM,Alarm,Relay,OV,OC,Fault,Event,Detail\n';
+            loggerData.forEach(e => { csv += `${e.id},"${e.timestamp}",${e.voltage.toFixed(1)},${e.current.toFixed(2)},${e.power.toFixed(1)},${e.energy.toFixed(3)},${e.rpm.toFixed(0)},${e.alarm?'YA':'TIDAK'},${e.relay_state?'NYALA':'MATI'},${e.overvoltage?'YA':'TIDAK'},${e.overcurrent?'YA':'TIDAK'},${e.fault_active?'YA':'TIDAK'},"${e.event_type}","${(e.fault_detail||[]).join('; ')}"\n`; });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'log_dc_' + new Date().toISOString().slice(0,10) + '.csv';
+            a.click();
+        }
+
+        function clearLoggerData() {
+            if (confirm('Hapus semua data?')) { loggerData = []; faultEventCount = 0; faultClearedCount = 0; previousFaultState = false; globalSequenceNumber = 1; localStorage.removeItem('loggerData_dc'); localStorage.removeItem('loggerStats_dc'); updateLoggerTable(); }
+        }
+
+        // ============ DEVICE STATUS ============
+        function checkDeviceStatus() {
+            if (Date.now() - lastDataTimestamp > OFFLINE_THRESHOLD || lastDataTimestamp === 0) { if (deviceOnline) { deviceOnline = false; updateDeviceBadge(false); updateRSSI(null); updateMemoryDisplay(null); } }
+            else { if (!deviceOnline) { deviceOnline = true; updateDeviceBadge(true); } }
+        }
+        setInterval(checkDeviceStatus, 1000);
+
+        function updateDeviceBadge(online) {
+            const badge = document.getElementById('deviceStatusBadge'), info = document.getElementById('deviceConnectionInfo');
+            if (badge) { badge.textContent = online ? '📡 Online' : '📡 Offline'; badge.className = 'status-badge ' + (online ? 'device-online' : 'device-offline'); }
+            if (info) info.textContent = online ? '🟢 Online' : '🔴 Offline';
+        }
+
+        function updateSimulationIndicator(active) {
+            simulationActive = active;
+            document.getElementById('simulationBadge').style.display = active ? 'inline-flex' : 'none';
+            document.getElementById('simulationStatus').textContent = active ? '🧪 AKTIF' : '✅ Nonaktif';
+        }
+
+        // ============ UI UPDATE ============
+        function updateRelayUI(st, auto, fault) {
+            currentRelayState = st; currentRelayAuto = auto;
+            const el = document.getElementById('dcRelayStatus'), mode = document.getElementById('dcRelayMode');
+            if (el) {
+                let cls = '', txt = '', dot = '';
+                if (fault) { cls = 'relay-status-pill tripped'; txt = '⚡ TRIP'; dot = 'tripped-dot'; }
+                else if (auto && st) { cls = 'relay-status-pill auto-on'; txt = '🟢 AUTO ON'; dot = 'on-dot'; }
+                else if (auto && !st) { cls = 'relay-status-pill auto-off'; txt = '🔴 AUTO OFF'; dot = 'off-dot'; }
+                else if (st) { cls = 'relay-status-pill on'; txt = '🟢 MANUAL ON'; dot = 'on-dot'; }
+                else { cls = 'relay-status-pill off'; txt = '🔴 MANUAL OFF'; dot = 'off-dot'; }
+                el.className = cls; el.innerHTML = `<span class="relay-status-dot ${dot}"></span> ${txt}`;
+            }
+            if (mode) mode.textContent = fault ? '⚡ TRIP' : auto ? '🔄 AUTO' : '👆 MANUAL';
+            updateManualButton(st, auto, fault);
+        }
+
+        function updateProtectionUI(ov, oc, fault) {
+            const ovB = document.getElementById('dcOvBadge'), ocB = document.getElementById('dcOcBadge'), fB = document.getElementById('dcFaultBadge');
+            const fn = document.getElementById('faultNotification');
+            if (ovB) { ovB.className = 'protection-badge ' + (ov ? 'overvoltage' : 'normal'); ovB.textContent = ov ? '⚡ OV!' : '✅ V OK'; }
+            if (ocB) { ocB.className = 'protection-badge ' + (oc ? 'overcurrent' : 'normal'); ocB.textContent = oc ? '🔌 OC!' : '✅ A OK'; }
+            if (fB) { fB.className = 'protection-badge ' + (fault ? 'fault' : 'normal'); fB.textContent = fault ? '⚡ TRIP!' : '✅ Normal'; }
+            
+            let msgs = [];
+            if (ov) msgs.push('⚡ Overvoltage');
+            if (oc) msgs.push('🔌 Overcurrent');
+            if (fn) {
+                if (msgs.length) { fn.style.display = 'block'; fn.innerHTML = '<strong>⚡ AUTO TRIP!</strong><br>' + msgs.join(', '); }
+                else if (fault) { fn.style.display = 'block'; fn.innerHTML = '<strong>⚠️ Fault Tersimpan</strong><br>Tekan RESET'; }
+                else fn.style.display = 'none';
+            }
+            
+            document.getElementById('protectionStatusText').textContent = msgs.length ? '⚡ TRIP: ' + msgs.join(', ') : '✅ Normal';
+            document.getElementById('dcFaultStatus').textContent = fault ? '⚡ AKTIF' : '✅ Tidak Ada';
+            
+            ['dcVoltageItem','dcCurrentItem'].forEach((id, i) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('protection-warning', [ov, oc][i]);
+            });
+            document.getElementById('dcVoltageWarning').textContent = ov ? '⚠️ >' + currentLimits.dc_voltage + 'V' : '';
+            document.getElementById('dcCurrentWarning').textContent = oc ? '⚠️ >' + currentLimits.dc_current + 'A' : '';
+        }
+
+        function updateManualButton(st, auto, fault) {
+            const btn = document.getElementById('manualRelayBtn'), icon = document.getElementById('manualIcon');
+            if (!btn || !icon) return;
+            if (fault) { btn.disabled = true; btn.className = 'action-btn-circle manual-btn manual-fault-state'; icon.textContent = '🚫'; }
+            else { btn.disabled = false; btn.className = st ? 'action-btn-circle manual-btn' : 'action-btn-circle manual-btn manual-off-state'; icon.textContent = st ? '🟢' : '🔴'; }
+        }
+
+        function updateLimitsUI(limits) {
+            if (limits.dc_voltage) currentLimits.dc_voltage = limits.dc_voltage;
+            if (limits.dc_current) currentLimits.dc_current = limits.dc_current;
+            document.getElementById('currentDcVLimit').textContent = currentLimits.dc_voltage + ' V';
+            document.getElementById('currentDcILimit').textContent = currentLimits.dc_current + ' A';
+            document.getElementById('dcVlimitDisplay').textContent = currentLimits.dc_voltage;
+            document.getElementById('dcIlimitDisplay').textContent = currentLimits.dc_current;
+            document.getElementById('simOvLimit').textContent = currentLimits.dc_voltage;
+            document.getElementById('simOcLimit').textContent = currentLimits.dc_current;
+            updateGaugeRanges();
+        }
+
+        function updateDisplay(dcData) {
+            lastDataTimestamp = Date.now(); lastHeartbeat = Date.now();
+            if (!dataReceivedFromESP) { dataReceivedFromESP = true; showGauges(); }
+            
+            document.getElementById('dcVoltage').textContent = Math.min(dcData.voltage, 300).toFixed(1);
+            document.getElementById('dcCurrent').textContent = dcData.current.toFixed(2);
+            document.getElementById('dcPower').textContent = dcData.power >= 1000 ? (dcData.power/1000).toFixed(2) : dcData.power.toFixed(1);
+            document.getElementById('dcPower').nextElementSibling.textContent = dcData.power >= 1000 ? 'kW' : 'W';
+            document.getElementById('dcEnergy').textContent = dcData.energy.toFixed(3);
+            const rpm = dcData.rpm || 0;
+            document.getElementById('dcRPM').textContent = rpm.toFixed(0);
+            document.getElementById('rpmInfo').textContent = rpm.toFixed(0) + ' RPM';
+            
+            // Update RPM timestamp jika tersedia di payload
+            if (dcData.rpm_timestamp) {
+                updateRPMTimestamp(dcData.rpm_timestamp);
+            }
+            
+            const alarm = dcData.alarm_status || false;
+            document.getElementById('dcAlarmStatus').textContent = alarm ? '🚨' : '✅';
+            document.getElementById('dcAlarmText').textContent = alarm ? 'ALARM!' : 'Normal';
+            
+            if (gauges.voltage) gauges.voltage.setValue(dcData.voltage);
+            if (gauges.current) gauges.current.setValue(dcData.current);
+            if (gauges.power) {
+                if (dcData.power > gauges.power.config.maxValue * 0.9) gauges.power.updateConfig({ maxValue: Math.ceil(dcData.power*1.2/100)*100 });
+                gauges.power.setValue(dcData.power);
+            }
+            if (gauges.energy) {
+                if (dcData.energy > gauges.energy.config.maxValue * 0.9) gauges.energy.updateConfig({ maxValue: Math.ceil(dcData.energy*1.2/10)*10 });
+                gauges.energy.setValue(dcData.energy);
+            }
+            if (gauges.rpm) {
+                if (rpm > gauges.rpm.config.maxValue * 0.9) gauges.rpm.updateConfig({ maxValue: Math.ceil(rpm*1.2/100)*100 });
+                gauges.rpm.setValue(rpm);
+            }
+            
+            const fault = dcData.fault_active || false;
+            currentFaults.dc_fault = fault;
+            if (dcData.simulation_active !== undefined) updateSimulationIndicator(dcData.simulation_active);
+            updateRelayUI(dcData.relay_state, dcData.relay_auto, fault);
+            updateProtectionUI(dcData.overvoltage, dcData.overcurrent, fault);
+            triggerFaultHaptic(dcData);
+            
+            const et = checkFaultTransition(dcData);
+            if (et !== 'normal' || fault) addLoggerEntry(dcData, et);
+            else if (!window._lastNormal || Date.now() - window._lastNormal > 5000) { addLoggerEntry(dcData, 'normal'); window._lastNormal = Date.now(); }
+        }
+
+        function handleFullData(data) {
+            if (data.rssi !== undefined && data.rssi !== null) {
+                updateRSSI(data.rssi);
+            } else if (window.debugMode && dataReceivedFromESP) {
+                console.warn('[DATA] RSSI missing in payload');
+            }
+            
+            if (data.free_heap !== undefined && data.free_heap !== null) {
+                updateMemoryDisplay(data.free_heap);
+            } else if (window.debugMode && dataReceivedFromESP) {
+                console.warn('[DATA] Heap missing in payload');
+            }
+            
+            if (data.limits) {
+                updateLimitsUI(data.limits);
+                localStorage.setItem('lastDCLimits', JSON.stringify(data.limits));
+            }
+            
+            if (data.uptime !== undefined) {
+                const uptimeEl = document.getElementById('uptimeValue');
+                if (uptimeEl) {
+                    const h = Math.floor(data.uptime / 3600);
+                    const m = Math.floor((data.uptime % 3600) / 60);
+                    const s = data.uptime % 60;
+                    uptimeEl.textContent = `${h}h ${m}m ${s}s`;
+                }
+            }
+        }
+
+        // ============ CHART ============
+        function initChart() {
+            const ctx = document.getElementById('dataChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: '⚡ Tegangan DC (V)', data: [], borderColor: '#6366f1', borderWidth: 2, tension: 0.4, fill: true, pointRadius: 3 }] },
+                options: { responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#1f2937' } } },
+                    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        function switchChart(type) {
+            currentChartType = type;
+            document.querySelectorAll('#monitorTab .btn').forEach(b => b.classList.remove('active'));
+            event?.target?.classList.add('active');
+            updateChart();
+        }
+
+        function addDataPoint(ts, dcData) {
+            const t = new Date(ts).toLocaleTimeString('id-ID', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            dataStore.timestamps.push(t);
+            dataStore.dcVoltage.push(dcData.voltage);
+            dataStore.dcCurrent.push(dcData.current);
+            dataStore.dcPower.push(dcData.power);
+            dataStore.dcEnergy.push(dcData.energy);
+            dataStore.dcRPM.push(dcData.rpm || 0);
+            Object.keys(dataStore).forEach(k => { while (dataStore[k].length > maxDataPoints) dataStore[k].shift(); });
+            updateChart();
+        }
+
+        function updateChart() {
+            if (!chart) return;
+            chart.data.labels = dataStore.timestamps;
+            const map = { voltage: ['⚡ Tegangan (V)', dataStore.dcVoltage, '#6366f1'], current: ['🔌 Arus (A)', dataStore.dcCurrent, '#3b82f6'], power: ['💡 Daya (W)', dataStore.dcPower, '#10b981'], energy: ['🔋 Energi (kWh)', dataStore.dcEnergy, '#f59e0b'], rpm: ['🔄 RPM', dataStore.dcRPM, '#8b5cf6'] };
+            const [label, data, color] = map[currentChartType] || map['voltage'];
+            chart.data.datasets[0].label = label;
+            chart.data.datasets[0].data = data;
+            chart.data.datasets[0].borderColor = color;
+            chart.update('none');
+        }
+
+        // ============ MQTT ============
+        function sendCommand(cmd) {
+            if (mqttClient?.isConnected()) {
+                const m = new Paho.MQTT.Message(cmd);
+                m.destinationName = commandTopic;
+                mqttClient.send(m);
+                if (window.debugMode) console.log('[MQTT] Command sent:', cmd);
+            } else showToast('❌ MQTT tidak terhubung', 'error');
+        }
+
+        function toggleManualRelay() {
+            if (!dataReceivedFromESP) { alert('⏳ Data belum diterima!'); return; }
+            if (currentFaults.dc_fault) { alert('⚠️ AUTO TRIP AKTIF!'); return; }
+            sendCommand('relay_dc_toggle');
+        }
+
+        function setLimit(type) {
+            let val, cmd;
+            if (type === 'dc_v') { val = document.getElementById('dcVoltageLimit').value; if (!val || val<1 || val>300) { alert('1-300 V'); return; } cmd = 'set_dc_v_limit:' + val; }
+            else { val = document.getElementById('dcCurrentLimit').value; if (!val || val<=0 || val>300) { alert('0.1-300 A'); return; } cmd = 'set_dc_i_limit:' + val; }
+            sendCommand(cmd);
+            document.getElementById(type==='dc_v'?'dcVoltageLimit':'dcCurrentLimit').value = '';
+        }
+
+        function connectMQTT() {
+            if (mqttClient) { try { mqttClient.disconnect(); } catch(e) {} mqttClient = null; }
+            mqttClient = new Paho.MQTT.Client(broker, wssPort, persistentClientId);
+            mqttClient.onConnectionLost = r => { if (r.errorCode !== 0) { updateConnectionUI(false); scheduleReconnect(); } };
+            mqttClient.onMessageArrived = m => {
+                lastHeartbeat = Date.now();
+                try {
+                    const data = JSON.parse(m.payloadString);
+                    
+                    if (window.debugMode) {
+                        console.log('[MQTT] Message on', m.destinationName, 
+                                   '| RSSI:', data.rssi, 
+                                   '| Heap:', data.free_heap,
+                                   '| RPM ts:', data.dc?.rpm_timestamp || 'N/A',
+                                   '| Has DC:', !!data.dc);
+                    }
+                    
+                    if (m.destinationName === topic && data.dc) {
+                        updateDisplay(data.dc);
+                        addDataPoint(data.timestamp||Date.now(), data.dc);
+                        localStorage.setItem('lastMonitoringData', JSON.stringify({ data, timestamp: Date.now() }));
+                    }
+                    
+                    if (m.destinationName === statusTopic && data.status === 'online') {
+                        if (window.debugMode) console.log('[MQTT] ESP32 online via status topic');
+                    }
+                    
+                    handleFullData(data);
+                    
+                } catch(e) {
+                    console.error('[MQTT] Parse error:', e, m.payloadString);
+                }
+            };
+            mqttClient.connect({
+                onSuccess: () => {
+                    reconnectAttempts = 0;
+                    lastHeartbeat = Date.now();
+                    updateConnectionUI(true);
+                    
+                    mqttClient.subscribe(topic);
+                    mqttClient.subscribe(statusTopic);
+                    
+                    dataReceivedFromESP = false;
+                    document.getElementById('waitingForData').style.display = 'block';
+                    
+                    setTimeout(() => {
+                        if (mqttClient?.isConnected()) {
+                            if (window.debugMode) console.log('[INIT] Requesting status from ESP32...');
+                            sendCommand('get_status');
+                        }
+                    }, 800);
+                    
+                    setTimeout(() => {
+                        if (!dataReceivedFromESP && Date.now() - lastDataTimestamp > 5000) {
+                            document.getElementById('waitingForData').innerHTML = 
+                                '<strong>⚠️ Data belum diterima</strong><br>ESP32 mungkin offline<br><button class="btn" onclick="reconnectMQTT()">🔄 Coba Lagi</button>';
+                        }
+                    }, 6000);
+                    
+                    if (window.debugMode) console.log('[MQTT] Connected, subscribed to:', topic, statusTopic);
+                },
+                onFailure: () => { updateConnectionUI(false); scheduleReconnect(); },
+                useSSL: true, timeout: 10, keepAliveInterval: 60, cleanSession: true
+            });
+        }
+
+        function updateConnectionUI(connected) {
+            const el = document.getElementById('connectionStatus');
+            if (connected) { el.textContent = '🟢 Terhubung'; el.className = 'status-badge connected'; }
+            else { el.textContent = reconnectAttempts > 0 ? '🟡 Menghubungkan...' : '🔴 Terputus'; el.className = reconnectAttempts > 0 ? 'status-badge connecting' : 'status-badge disconnected'; }
+            document.getElementById('mqttConnectionInfo').textContent = connected ? '🟢 Terhubung' : '🔴 Terputus';
+        }
+
+        function reconnectMQTT() {
+            dataReceivedFromESP = false;
+            document.getElementById('waitingForData').style.display = 'block';
+            document.getElementById('waitingForData').innerHTML = '<strong>⏳ Menghubungkan ulang...</strong><br>Mencoba koneksi ke broker...';
+            reconnectAttempts = 0;
+            if (mqttReconnectTimer) clearTimeout(mqttReconnectTimer);
+            if (mqttClient) { try { mqttClient.disconnect(); } catch(e) {} mqttClient = null; }
+            updateConnectionUI(false);
+            setTimeout(connectMQTT, 500);
+        }
+
+        function scheduleReconnect() {
+            if (mqttReconnectTimer) clearTimeout(mqttReconnectTimer);
+            reconnectAttempts++;
+            const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts-1), maxReconnectDelay);
+            if (window.debugMode) console.log('[MQTT] Reconnect scheduled in', delay, 'ms (attempt', reconnectAttempts, ')');
+            mqttReconnectTimer = setTimeout(() => { if (!mqttClient?.isConnected()) connectMQTT(); }, delay + Math.random()*1000);
+        }
+
+        // ============ TABS & THEME ============
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tab + 'Tab').classList.add('active');
+            const map = { monitor:0, logger:1, simulation:2, settings:3, about:4 };
+            document.querySelectorAll('.tab-btn')[map[tab]||0].classList.add('active');
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', theme==='dark'?'#1a1a2e':'#667eea');
+            document.getElementById('activeThemeInfo').textContent = theme==='dark'?'🌙 Gelap':'☀️ Terang';
+            if (chart) { const isDark = theme==='dark'; chart.options.plugins.legend.labels.color = isDark?'#f1f5f9':'#1f2937'; chart.update('none'); }
+        }
+
+        function setPalette(palette) {
+            document.documentElement.removeAttribute('data-palette');
+            if (palette !== 'default') document.documentElement.setAttribute('data-palette', palette);
+            localStorage.setItem('palette', palette);
+            document.querySelectorAll('#paletteSwatches .color-swatch').forEach(s => s.classList.toggle('active', s.dataset.palette===palette));
+            document.getElementById('activePaletteInfo').textContent = { default:'Default', ocean:'Ocean', forest:'Forest', sunset:'Sunset', purple:'Purple', rose:'Rose', amber:'Amber' }[palette]||palette;
+            updateGaugeRanges();
+        }
+
+        function setBgPalette(bp) {
+            document.documentElement.removeAttribute('data-bg-palette');
+            if (bp !== 'bg-default') document.documentElement.setAttribute('data-bg-palette', bp);
+            localStorage.setItem('bgPalette', bp);
+            document.querySelectorAll('#bgPaletteSwatches .bg-swatch').forEach(s => s.classList.toggle('active', s.dataset.bgPalette===bp));
+        }
+
+        function toggleFab() { document.getElementById('fabContainer').classList.toggle('active'); }
+        function closeFab() { document.getElementById('fabContainer').classList.remove('active'); }
+
+        function clearCache() {
+            if (confirm('Hapus cache?')) { const keepLogger = confirm('Simpan riwayat?'); const kh = hapticEnabled; if (!keepLogger) localStorage.clear(); else { const temp = {}; ['loggerData_dc','loggerStats_dc','mqttClientId','theme','palette','bgPalette'].forEach(k => { const v = localStorage.getItem(k); if (v) temp[k] = v; }); localStorage.clear(); Object.entries(temp).forEach(([k,v]) => localStorage.setItem(k,v)); } localStorage.setItem('hapticEnabled', kh); stopHapticInterval(); setTimeout(() => location.reload(), 500); }
+        }
+
+        function showToast(msg, type='info') {
+            const t = document.createElement('div');
+            t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${type==='error'?'#ef4444':'#6366f1'};color:white;padding:10px 20px;border-radius:10px;z-index:10000;font-size:0.9em;`;
+            t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+        }
+
+        function initPWA() {
+            window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
+            window.addEventListener('appinstalled', () => { pwaInstalled = true; document.getElementById('pwaStatus').textContent = '✅ Terpasang'; });
+        }
+
+        function installPWA() {
+            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(r => { if (r.outcome === 'accepted') pwaInstalled = true; deferredPrompt = null; }); }
+            document.getElementById('pwaInstallPrompt').style.display = 'none';
+        }
+
+        function dismissInstall() { document.getElementById('pwaInstallPrompt').style.display = 'none'; }
+
+        // ============ INIT ============
+        window.onload = () => {
+            console.log('🚀 DC Power Monitor v8.1 - PZEM-017 + RPM (Sync Fix)');
+            
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+            setPalette(localStorage.getItem('palette') || 'default');
+            setBgPalette(localStorage.getItem('bgPalette') || 'bg-default');
+            initHaptic();
+            initGauges();
+            initChart();
+            
+            try {
+                const saved = localStorage.getItem('loggerData_dc');
+                if (saved) { loggerData = JSON.parse(saved); globalSequenceNumber = loggerData.length + 1; }
+                const stats = localStorage.getItem('loggerStats_dc');
+                if (stats) { const s = JSON.parse(stats); faultEventCount = s.faultEventCount || 0; faultClearedCount = s.faultClearedCount || 0; }
+            } catch(e) {}
+            updateLoggerTable();
+            
+            currentLimits.dc_voltage = 60; currentLimits.dc_current = 50;
+            document.getElementById('currentDcVLimit').textContent = '60 V';
+            document.getElementById('currentDcILimit').textContent = '50 A';
+            document.getElementById('dcVlimitDisplay').textContent = '60';
+            document.getElementById('dcIlimitDisplay').textContent = '50';
+            document.getElementById('simOvLimit').textContent = '60';
+            document.getElementById('simOcLimit').textContent = '50';
+            
+            updateConnectionUI(false);
+            document.getElementById('connectionStatus').className = 'status-badge connecting';
+            document.getElementById('connectionStatus').textContent = '🟡 Menghubungkan...';
+            
+            connectMQTT();
+            initPWA();
+            if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js', { scope: './' });
+            
+            setInterval(() => { if (mqttClient?.isConnected() && Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) { if (window.debugMode) console.warn('[HEARTBEAT] Timeout, reconnecting...'); reconnectMQTT(); } }, 30000);
+            
+            window.addEventListener('resize', () => Object.values(gauges).forEach(g => g?.resize?.()));
+        };
+    </script>
+</body>
+</html>
